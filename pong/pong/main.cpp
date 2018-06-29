@@ -121,7 +121,7 @@ int main ()
     int score = 0, scoreAI = 0;
     int lives = 10, livesAI = 10;
 
-    Network net ("network");
+    Network net ("network.txt");
 
     while (window.isOpen () && lives > 0)
         {
@@ -141,6 +141,13 @@ int main ()
 
 
 
+        net.setInput (0, 1 - (platformAI.pos-50)/400);
+        net.setInput (1, 1 - ball.x/650);
+        net.setInput (2, 1 - (ball.y-50)/650);
+
+        net.update ();
+
+        
         int code = ball.move (dt, 500, 700, 50, platform, platformAI);
         if (code == 1)
             {

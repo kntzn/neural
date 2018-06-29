@@ -10,6 +10,10 @@ double weightRand ()
 
 Neuron::Neuron ()
     { }
+Neuron::Neuron (std::vector<double> weightsOfInputs)
+    { 
+    weights = weightsOfInputs;
+    }
 Neuron::~Neuron ()
     { }
 
@@ -52,4 +56,9 @@ void Neuron::mutate (double mutationStrength, double percOfNeurons)
 void Neuron::destroyInputs ()
     { 
     inputs.clear ();
+    }
+
+std::vector<double> Neuron::getWeights ()
+    {
+    return weights;
     }

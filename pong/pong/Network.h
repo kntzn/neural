@@ -14,9 +14,9 @@ class Network
         std::vector <Neuron*> neurons;
 
     public:
-
         Network (uint nInputs, uint nHidden, uint nOutputs);
         Network (Network netA, Network netB);
+        Network (char filename []);
         ~Network ();
     
         void update ();
@@ -30,5 +30,12 @@ class Network
         uint getInputLayerSize ();
         uint getHiddenLayerSize ();
         uint getOutputLayerSize ();
+
+        void saveToFile (char filename []);
+
+        double version ()
+            { 
+            return 1.1;
+            }
     };
 

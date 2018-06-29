@@ -11,6 +11,7 @@ class Neuron
         double output;
     public:
         Neuron ();
+        Neuron (std::vector <double> weightsOfInputs);
         ~Neuron ();
     
         void  setInput (double value);
@@ -22,4 +23,6 @@ class Neuron
         void mutate (double mutationStrength, double percOfNeurons);
 
         void destroyInputs ();
+
+        std::vector <double> getWeights ();
     };

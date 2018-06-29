@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include <sstream>
+#include "Network.h"
 
 struct Platform
     {
@@ -25,79 +26,79 @@ struct Platform
 
     };
 
-class Ball: public sf::Vector2f
+struct Ball: public sf::Vector2f
     {
-    private:
-        sf::Vector2f vel = sf::Vector2f (-125+rand ()%251, -250);
+    sf::Vector2f vel = sf::Vector2f (-125+rand ()%251, -250);
 
-    public:
-        Ball (sf::Vector2f pos, sf::Vector2f velocity)
-            { 
-            x = pos.x;
-            y = pos.y;
+    Ball (sf::Vector2f pos, sf::Vector2f velocity)
+        { 
+        x = pos.x;
+        y = pos.y;
 
-            vel = velocity;
+        vel = velocity;
+        }
+
+    int move (float dt, int pl_w, int pl_h, int pl_begin, Platform platform, Platform platformNet)
+        { 
+        int code = 0;
+
+        x += vel.x*dt;
+        y += vel.y*dt;
+
+        if (x < 0)
+            {
+            x = -x;
+            vel.x *= -1;
             }
-
-        int move (float dt, int pl_w, int pl_h, Platform platform)
-            { 
-            int code = 0;
-
-            x += vel.x*dt;
-            y += vel.y*dt;
-
-            if (x < 0)
+        if (y < pl_begin)
+            {
+            if (platformNet.pos - platformNet.width/2 < x && x < platformNet.pos + platformNet.width/2)
                 {
-                x = -x;
-                vel.x *= -1;
-                }
-            if (y < 0)
-                {
-                y = -y;
                 vel.y *= -1;
+                vel.x = 5*(platformNet.pos - x);
+                }
+            else
+                {
                 code = 1;
                 }
-            if (x > pl_w)
+            }
+        if (x > pl_w)
+            {
+            x = 2*pl_w - x;
+            vel.x *= -1;
+            }
+        if (y > pl_h)
+            {
+            if (platform.pos - platform.width/2 < x && x < platform.pos + platform.width/2)
                 {
-                x = 2*pl_w - x;
-                vel.x *= -1;
+                vel.y *= -1;
+                vel.x = 5*(platform.pos - x);
                 }
-            if (y > pl_h)
+            else
                 {
-                if (platform.pos - platform.width/2 < x && x < platform.pos + platform.width/2)
-                    {
-                    vel.y *= -1;
-                    vel.x = 5*(platform.pos - x);
-                    }
-                else
-                    {
-                    code = -1;
-
-                    x = pl_w/2;
-                    y = pl_h;
-                    vel = sf::Vector2f (-pl_w/4 + rand ()%(pl_w/2+1), -vel.y);
-                    }
+                code = -1;
                 }
-
-            return code;
             }
 
-        void draw (sf::RenderWindow &window, sf::Texture* txtr)
-            { 
-            sf::CircleShape ball;
-            ball.setRadius (12);
-            ball.setOrigin (12, 12);
-            ball.setTexture (txtr);
-            ball.setPosition (x, y);
-            ball.setTextureRect (sf::IntRect (50, 0, 50, 50));
-            window.draw (ball);
-            }
+        return code;
+        }
+
+    void draw (sf::RenderWindow &window, sf::Texture* txtr)
+        { 
+        sf::CircleShape ball;
+        ball.setRadius (12);
+        ball.setOrigin (12, 12);
+        ball.setTexture (txtr);
+        ball.setPosition (x, y);
+        ball.setTextureRect (sf::IntRect (50, 0, 50, 50));
+        window.draw (ball);
+        }
 
     };
 
 int main ()
     {
-    sf::RenderWindow window (sf::VideoMode (500, 550), "");
+    sf::RenderWindow window (sf::VideoMode (500, 750), "");
     window.setFramerateLimit (60);
 
     sf::Image image;
@@ -114,10 +115,13 @@ int main ()
 
     Ball ball (sf::Vector2f (250, 500), sf::Vector2f (250, -250));
     
-    Platform platform (250, 500);
+    Platform platform   (250, 700);
+    Platform platformAI (250, 25);
     
-    int score = 0;
-    int lives = 10;
+    int score = 0, scoreAI = 0;
+    int lives = 10, livesAI = 10;
+
+    Network net ("network");
 
     while (window.isOpen () && lives > 0)
         {
@@ -129,35 +133,77 @@ int main ()
         if (sf::Keyboard::isKeyPressed (sf::Keyboard::A) && platform.pos  > 50)
             platform.pos -= 250*dt;
 
-        int code = ball.move (dt, 500, 500, platform);
-        if (code == 1)
-            score++;
-        else if (code == -1)
-            lives--;
 
+        if (net.getOuput(0) < 0.4 && platformAI.pos  < 450)
+            platformAI.pos += 250*dt;
+        if (net.getOuput (0) > 0.6 && platformAI.pos  > 50)
+            platformAI.pos -= 250*dt;
+
+
+
+        int code = ball.move (dt, 500, 700, 50, platform, platformAI);
+        if (code == 1)
+            {
+            score++;
+            
+            ball.x = 500/2;
+            ball.y = 650;
+            ball.vel = sf::Vector2f (-500/4 + rand ()%(500/2+1), -250);
+
+            //livesAI--;
+            }
+        if (code == -1)
+            {
+            //lives--;
+            scoreAI++;
+
+            ball.x = 500/2;
+            ball.y = 100;
+            ball.vel = sf::Vector2f (-500/4 + rand ()%(500/2+1), 250);
+            }
         window.clear ();
 
         platform.draw (window);
+        platformAI.draw (window);
         ball.draw (window, &txtr);
 
         std::ostringstream score_str;
         score_str << "Score: " << score;
         score_text.setString (score_str.str ());
+        score_text.setPosition (200, 350);
+        window.draw (score_text);
+        
+        std::ostringstream score_str_AI;
+        score_str_AI << " ScoreAI: " << scoreAI;
+        score_text.setString ("");
+        score_text.setString (score_str_AI.str ());
         score_text.setPosition (200, 200);
         window.draw (score_text);
+
 
         for (int i = 0; i < lives; i++)
             {
             sf::Sprite heart_sprite;
-            heart_sprite.setPosition (25*i, 525);
+            heart_sprite.setPosition (25*i, 725);
             heart_sprite.setTexture (txtr);
             heart_sprite.setTextureRect (sf::IntRect (0, 0, 50, 50));
             heart_sprite.scale (0.5f, 0.5f);
             window.draw (heart_sprite);
             }
-        
+        for (int i = 0; i < livesAI; i++)
+            {
+            sf::Sprite heart_sprite;
+            heart_sprite.setPosition (25*i, 0);
+            heart_sprite.setTexture (txtr);
+            heart_sprite.setTextureRect (sf::IntRect (0, 0, 50, 50));
+            heart_sprite.scale (0.5f, 0.5f);
+            window.draw (heart_sprite);
+            }
+
         window.display ();
         }
+
+
     
     return 0;
     }

@@ -1,169 +1,163 @@
 #include <SFML/Graphics.hpp>
-#include "Network.h"
-#include <ctime>
+#include <sstream>
 
-struct Player
+struct Platform
     {
-    sf::Vector2f ballPosition = sf::Vector2f (250, 250);
-    sf::Vector2f ballVelocity = sf::Vector2f (-125, -250);
     sf::RectangleShape platform;
+    
+    float pos = 250;
+    float width = 100;
+    float level = 500;
 
-    Network net = Network (3, 3, 1);
-
-    float platformPosition = 250;
-
-    double score = 0;
-
-    bool alive = true;
-
-    Player ()
-        {
-        platform.setSize (sf::Vector2f (100, 25));
-        platform.setOrigin (sf::Vector2f (50, 0));
+    Platform (float position, float height)
+        { 
+        pos = position;
+        level = height;
+        platform.setSize (sf::Vector2f (100, 25)); 
+        platform.setOrigin (sf::Vector2f (width/2, 0));
         }
+
+    void draw (sf::RenderWindow &window)
+        { 
+        platform.setPosition (pos, level);
+        window.draw (platform);
+        }
+
+    };
+
+class Ball: public sf::Vector2f
+    {
+    private:
+        sf::Vector2f vel = sf::Vector2f (-125+rand ()%251, -250);
+
+    public:
+        Ball (sf::Vector2f pos, sf::Vector2f velocity)
+            { 
+            x = pos.x;
+            y = pos.y;
+
+            vel = velocity;
+            }
+
+        int move (float dt, int pl_w, int pl_h, Platform platform)
+            { 
+            int code = 0;
+
+            x += vel.x*dt;
+            y += vel.y*dt;
+
+            if (x < 0)
+                {
+                x = -x;
+                vel.x *= -1;
+                }
+            if (y < 0)
+                {
+                y = -y;
+                vel.y *= -1;
+                code = 1;
+                }
+            if (x > pl_w)
+                {
+                x = 2*pl_w - x;
+                vel.x *= -1;
+                }
+            if (y > pl_h)
+                {
+                if (platform.pos - platform.width/2 < x && x < platform.pos + platform.width/2)
+                    {
+                    vel.y *= -1;
+                    vel.x = 5*(platform.pos - x);
+                    }
+                else
+                    {
+                    code = -1;
+
+                    x = pl_w/2;
+                    y = pl_h;
+                    vel = sf::Vector2f (-pl_w/4 + rand ()%(pl_w/2+1), -vel.y);
+                    }
+                }
+
+            return code;
+            }
+
+        void draw (sf::RenderWindow &window, sf::Texture* txtr)
+            { 
+            sf::CircleShape ball;
+            ball.setRadius (12);
+            ball.setOrigin (12, 12);
+            ball.setTexture (txtr);
+            ball.setPosition (x, y);
+            ball.setTextureRect (sf::IntRect (50, 0, 50, 50));
+            window.draw (ball);
+            }
+
     };
 
 int main ()
     {
-    srand (time (0));
-
     sf::RenderWindow window (sf::VideoMode (500, 550), "");
-    
-#define POPULATION 50
+    window.setFramerateLimit (60);
 
-    Player players [POPULATION];
+    sf::Image image;
+    image.loadFromFile ("textures.png");
+    image.createMaskFromColor (sf::Color (0, 0, 255));
+    sf::Texture txtr;
+    txtr.loadFromImage (image);
+
+    sf::Font font;
+    font.loadFromFile ("Bulgaria_Glorious_Cyr.ttf");
+    sf::Text score_text ("", font, 16);
 
     sf::Clock timer;
-    while (window.isOpen ())
+
+    Ball ball (sf::Vector2f (250, 500), sf::Vector2f (250, -250));
+    
+    Platform platform (250, 500);
+    
+    int score = 0;
+    int lives = 10;
+
+    while (window.isOpen () && lives > 0)
         {
-        float dt = 5*timer.getElapsedTime ().asSeconds ();
+        float dt = 3*timer.getElapsedTime ().asSeconds ();
         timer.restart ();
 
-        // -------------------------
-        bool newGeneration = true;
+        if (sf::Keyboard::isKeyPressed (sf::Keyboard::D) && platform.pos  < 450)
+            platform.pos += 250*dt;
+        if (sf::Keyboard::isKeyPressed (sf::Keyboard::A) && platform.pos  > 50)
+            platform.pos -= 250*dt;
 
-        for (int i = 0; i < POPULATION; i++)
-            {
-            printf ("%d", players[i].alive);
-
-            if (players [i].alive)
-                newGeneration = false;
-
-            players [i].net.setInput (0, players [i].platformPosition);
-            players [i].net.setInput (1, players [i].ballPosition.x);
-            players [i].net.setInput (2, players [i].ballPosition.y);
-
-            players [i].net.update ();
-
-            if (players [i].alive)
-                if (players [i].net.getOuput (0) > 0.6 && players [i].platformPosition < 450)
-                    players [i].platformPosition += 250*dt;
-            if (players [i].alive)
-                if (players [i].net.getOuput (0) < 0.4 && players [i].platformPosition > 50)
-                    players [i].platformPosition -= 250*dt;
-            // -------------------------
-
-            players [i].ballPosition += players [i].ballVelocity*dt;
-
-            if (players [i].ballPosition.x < 0)
-                {
-                players [i].ballPosition.x = -players [i].ballPosition.x;
-                players [i].ballVelocity.x *= -1;
-                }
-            if (players [i].ballPosition.y < 0)
-                {
-                players [i].ballPosition.y = -players [i].ballPosition.y;
-                players [i].ballVelocity.y *= -1;
-
-                players [i].score++;
-                }
-            if (players [i].ballPosition.x > 500)
-                {
-                players [i].ballPosition.x = 1000 - players [i].ballPosition.x;
-                players [i].ballVelocity.x *= -1;
-                }
-            if (players [i].ballPosition.y > 500)
-                {
-                if (players [i].platformPosition-50 < players [i].ballPosition.x && players [i].ballPosition.x < players [i].platformPosition+50)
-                    {
-                    if (players [i].alive)
-                        {
-                        players [i].ballVelocity.y *= -1;
-                        players [i].ballVelocity.x = 5*(players [i].platformPosition - players [i].ballPosition.x);
-                        }
-                    }
-                else
-                    {
-                    if (players [i].alive)
-                        players [i].score -= fabs (players [i].platformPosition - players [i].ballPosition.x)/400;
-
-                    players [i].alive = false;
-                    }
-                }
-            }
-        
-        printf ("\n");
-        // ------------------------
-
-        if (newGeneration)
-            {
-            for (int j = 0; j < POPULATION; j++)
-                for (int k = 0; k < POPULATION-1; k++)
-                    {
-                    if (players [k].score < players [k+1].score)
-                        std::swap (players [k], players [k+1]);
-                    }
-
-
-            for (int i = 0; i < POPULATION; i++)
-                printf ("%lg\n", players [i].score);
-
-
-            bool copyFlag = false;
-            int lastOriginal = 0;
-            for (int i = 0; i < POPULATION; i++)
-                {
-                if (i == 0)
-                    players [i].platform.setFillColor (sf::Color::Green);
-                else
-                    players [i].platform.setFillColor (sf::Color::White);
-
-                if (players [i].score < 1)
-                    {
-                    players [i].net.mutate (50, 0.3);
-                    }
-                }
-
-            for (int i = 0; i < POPULATION; i++)
-                {
-                players [i].score = 0;
-                players [i].net.mutate (5, 0.2);
-                players [i].alive = true;
-                players [i].ballPosition = sf::Vector2f (250, 250);
-                players [i].ballVelocity = sf::Vector2f (-125, -250);
-                players [i].platformPosition = 250;
-                }
-
-            }
+        int code = ball.move (dt, 500, 500, platform);
+        if (code == 1)
+            score++;
+        else if (code == -1)
+            lives--;
 
         window.clear ();
 
-        sf::CircleShape ball;
-        ball.setRadius (5);
-        ball.setOrigin (5, 5);
-        for (int i = POPULATION-1; i >= 0; i--)
+        platform.draw (window);
+        ball.draw (window, &txtr);
+
+        std::ostringstream score_str;
+        score_str << "Score: " << score;
+        score_text.setString (score_str.str ());
+        score_text.setPosition (200, 200);
+        window.draw (score_text);
+
+        for (int i = 0; i < lives; i++)
             {
-            ball.setPosition (players [i].ballPosition);
-            window.draw (ball);
-
-            players [i].platform.setPosition (sf::Vector2f (players [i].platformPosition, 500));
-            
-            if (players [i].alive)
-                window.draw (players [i].platform);
+            sf::Sprite heart_sprite;
+            heart_sprite.setPosition (25*i, 525);
+            heart_sprite.setTexture (txtr);
+            heart_sprite.setTextureRect (sf::IntRect (0, 0, 50, 50));
+            heart_sprite.scale (0.5f, 0.5f);
+            window.draw (heart_sprite);
             }
-
+        
         window.display ();
         }
-
+    
     return 0;
     }

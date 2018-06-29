@@ -134,15 +134,15 @@ int main ()
             platform.pos -= 250*dt;
 
 
-        if (net.getOuput(0) < 0.4 && platformAI.pos  < 450)
+        if (net.getOuput(0) > 0.6 && platformAI.pos  < 450)
             platformAI.pos += 250*dt;
-        if (net.getOuput (0) > 0.6 && platformAI.pos  > 50)
+        if (net.getOuput (0) < 0.4 && platformAI.pos  > 50)
             platformAI.pos -= 250*dt;
 
 
 
-        net.setInput (0, 1 - (platformAI.pos-50)/400);
-        net.setInput (1, 1 - ball.x/650);
+        net.setInput (0, (platformAI.pos-50)/400);
+        net.setInput (1, ball.x/400);
         net.setInput (2, 1 - (ball.y-50)/650);
 
         net.update ();

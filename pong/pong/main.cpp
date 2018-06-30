@@ -142,7 +142,7 @@ int main ()
 
 
         net.setInput (0, (platformAI.pos-50)/400);
-        net.setInput (1, ball.x/400);
+        net.setInput (1, ball.x/500);
         net.setInput (2, 1 - (ball.y-50)/650);
 
         net.update ();

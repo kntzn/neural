@@ -119,14 +119,27 @@ int main ()
     Platform platformAI (250, 25);
     
     int score = 0, scoreAI = 0;
-    int lives = 10, livesAI = 10;
+    int lives = 20, livesAI = 20;
 
     Network net ("network.txt");
+    Network net2 ("network.txt");
 
-    while (window.isOpen () && lives > 0)
+    while (window.isOpen () && lives > 0 && livesAI > 0)
         {
         float dt = 3*timer.getElapsedTime ().asSeconds ();
         timer.restart ();
+
+
+        sf::Event ev;
+
+        while (window.pollEvent (ev))
+            {
+            if (ev.type == sf::Event::Closed)
+                window.close ();
+
+            timer.restart ();
+            }
+
 
         if (sf::Keyboard::isKeyPressed (sf::Keyboard::D) && platform.pos  < 450)
             platform.pos += 250*dt;
@@ -139,29 +152,36 @@ int main ()
         if (net.getOuput (0) < 0.4 && platformAI.pos  > 50)
             platformAI.pos -= 250*dt;
 
+        if (net2.getOuput (0) < 0.4 && platform.pos  < 450)
+            platform.pos += 250*dt;
+        if (net2.getOuput (0) > 0.6 && platform.pos  > 50)
+            platform.pos -= 250*dt;
+
 
 
         net.setInput (0, (platformAI.pos-50)/400);
         net.setInput (1, ball.x/500);
-        net.setInput (2, 1 - (ball.y-50)/650);
-
+        
+        net2.setInput (0, 1 - (platform.pos-50)/400);
+        net2.setInput (1, 1 - ball.x/500);
+        
         net.update ();
+        net2.update ();
 
         
         int code = ball.move (dt, 500, 700, 50, platform, platformAI);
         if (code == 1)
             {
             score++;
+            livesAI--; 
             
             ball.x = 500/2;
             ball.y = 650;
             ball.vel = sf::Vector2f (-500/4 + rand ()%(500/2+1), -250);
-
-            //livesAI--;
             }
         if (code == -1)
             {
-            //lives--;
+            lives--;
             scoreAI++;
 
             ball.x = 500/2;
@@ -211,6 +231,33 @@ int main ()
         }
 
 
-    
+    while (window.isOpen ())
+        {
+        sf::Event ev;
+
+        while (window.pollEvent (ev))
+            {
+            if (ev.type == sf::Event::Closed)
+                window.close ();
+            }
+
+        window.clear ();
+
+        if (livesAI > lives)
+            {
+            score_text.setString ("AI wins");
+            score_text.setPosition (200, 370);
+            }
+        else
+            {
+            score_text.setString ("You are AI,\n aren't you?");
+            score_text.setPosition (150, 370);
+            }
+        score_text.setCharacterSize (32);
+        window.draw (score_text);
+        window.display ();
+        }
+
+
     return 0;
     }

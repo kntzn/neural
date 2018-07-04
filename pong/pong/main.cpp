@@ -38,7 +38,7 @@ struct Ball: public sf::Vector2f
         vel = velocity;
         }
 
-    int move (float dt, int pl_w, int pl_h, int pl_begin, Platform platform, Platform platformNet)
+    int move (float dt, int pl_w, int pl_h, Platform platform)
         { 
         int code = 0;
 
@@ -50,17 +50,12 @@ struct Ball: public sf::Vector2f
             x = -x;
             vel.x *= -1;
             }
-        if (y < pl_begin)
+        if (y < 0)
             {
-            if (platformNet.pos - platformNet.width/2 < x && x < platformNet.pos + platformNet.width/2)
-                {
-                vel.y *= -1;
-                vel.x = 5*(platformNet.pos - x);
-                }
-            else
-                {
-                code = 1;
-                }
+            vel.y *= -1;
+            y = -y;
+
+            code = 1;
             }
         if (x > pl_w)
             {
@@ -96,10 +91,23 @@ struct Ball: public sf::Vector2f
 
     };
 
+struct Player
+    {
+    Ball ball = Ball (sf::Vector2f (250, 500), sf::Vector2f (250, -250));
+
+    Platform platform = Platform (250, 500);
+
+    Network net = Network (2, 3, 1);
+
+    float score = 0;
+
+    bool alive = true;
+    };
+
+
 int main ()
     {
-    sf::RenderWindow window (sf::VideoMode (500, 750), "");
-    window.setFramerateLimit (60);
+    sf::RenderWindow window (sf::VideoMode (500, 550), "");
 
     sf::Image image;
     image.loadFromFile ("textures.png");
@@ -107,31 +115,23 @@ int main ()
     sf::Texture txtr;
     txtr.loadFromImage (image);
 
-    sf::Font font;
-    font.loadFromFile ("Bulgaria_Glorious_Cyr.ttf");
-    sf::Text score_text ("", font, 16);
-
     sf::Clock timer;
 
-    Ball ball (sf::Vector2f (250, 500), sf::Vector2f (250, -250));
-    
-    Platform platform   (250, 700);
-    Platform platformAI (250, 25);
-    
-    int score = 0, scoreAI = 0;
-    int lives = 20, livesAI = 20;
+    const int N_AI = 50;
+    const int maxScore = 100;
+    const float platformSpeed = 250;
 
-    Network net ("network.txt");
-    Network net2 ("network.txt");
+    
+    Player AIs [N_AI] = { };
 
-    while (window.isOpen () && lives > 0 && livesAI > 0)
+    while (window.isOpen ())
         {
-        float dt = 3*timer.getElapsedTime ().asSeconds ();
-        timer.restart ();
+        // Sfml timer (not used while learning)
+        float dt = 0.016f; //3*timer.getElapsedTime ().asSeconds ();
+        //timer.restart ();
 
-
+        // Sfml events
         sf::Event ev;
-
         while (window.pollEvent (ev))
             {
             if (ev.type == sf::Event::Closed)
@@ -140,124 +140,135 @@ int main ()
             timer.restart ();
             }
 
-
-        if (sf::Keyboard::isKeyPressed (sf::Keyboard::D) && platform.pos  < 450)
-            platform.pos += 250*dt;
-        if (sf::Keyboard::isKeyPressed (sf::Keyboard::A) && platform.pos  > 50)
-            platform.pos -= 250*dt;
-
-
-        if (net.getOuput(0) > 0.6 && platformAI.pos  < 450)
-            platformAI.pos += 250*dt;
-        if (net.getOuput (0) < 0.4 && platformAI.pos  > 50)
-            platformAI.pos -= 250*dt;
-
-        if (net2.getOuput (0) < 0.4 && platform.pos  < 450)
-            platform.pos += 250*dt;
-        if (net2.getOuput (0) > 0.6 && platform.pos  > 50)
-            platform.pos -= 250*dt;
-
-
-
-        net.setInput (0, (platformAI.pos-50)/400);
-        net.setInput (1, ball.x/500);
-        
-        net2.setInput (0, 1 - (platform.pos-50)/400);
-        net2.setInput (1, 1 - ball.x/500);
-        
-        net.update ();
-        net2.update ();
-
-        
-        int code = ball.move (dt, 500, 700, 50, platform, platformAI);
-        if (code == 1)
+        // Networks
+        for (int i = 0; i < N_AI; i++)
             {
-            score++;
-            livesAI--; 
-            
-            ball.x = 500/2;
-            ball.y = 650;
-            ball.vel = sf::Vector2f (-500/4 + rand ()%(500/2+1), -250);
-            }
-        if (code == -1)
-            {
-            lives--;
-            scoreAI++;
+            AIs [i].net.setInput (0, 1 - (AIs [i].platform.pos-50)/400);
+            AIs [i].net.setInput (1, 1 - AIs [i].ball.x/500);
 
-            ball.x = 500/2;
-            ball.y = 100;
-            ball.vel = sf::Vector2f (-500/4 + rand ()%(500/2+1), 250);
+            AIs [i].net.update ();
+
+            if (AIs [i].net.getOuput (0) < 0.4 && AIs [i].platform.pos  < 450)
+                AIs [i].platform.pos += platformSpeed*dt;
+            if (AIs [i].net.getOuput (0) > 0.6 && AIs [i].platform.pos  > 50)
+                AIs [i].platform.pos -= platformSpeed*dt;
             }
+
+        // Physics
+        bool reachedMaxScore = false;
+        bool allDied = true;
+
+        for (int i = 0; i < N_AI; i++)
+            {
+            if (AIs [i].score >= maxScore)
+                reachedMaxScore = true;
+
+            if (AIs [i].alive)
+                {
+                allDied = false;
+
+                int code = AIs [i].ball.move (dt, 500, 500, AIs [i].platform);
+                if (code == 1)
+                    {
+                    AIs [i].score++;
+                    }
+                if (code == -1)
+                    {
+                    AIs [i].alive = false;
+                    AIs [i].ball.x = 500/2;
+                    AIs [i].ball.y = 500;
+                    AIs [i].ball.vel = sf::Vector2f (-500/4 + rand ()%(500/2+1), -250);
+                    AIs [i].score -= fabs (AIs [i].platform.pos - AIs [i].ball.x)/450;
+                    }
+                }
+            }
+
+        // Logs
+        for (int i = 0; i < N_AI; i++)
+            printf ("%d", AIs [i].alive);
+        printf ("\n");
+
+        // Saving best network
+        if (sf::Keyboard::isKeyPressed (sf::Keyboard::Space))
+            for (int i = 0; i < N_AI; i++)
+                {
+                if (AIs [i].alive)
+                    {
+                    AIs [i].net.saveToFile ("network.txt");
+                    break;
+                    }
+                }
+
+        // New generation case
+        if (allDied || reachedMaxScore)
+            {
+            // Sortng AIs by their scores using bubblesort (sorry)
+            for (int i = 0; i < N_AI; i++)
+                for (int j = 0; j < N_AI-1; j++)
+                    if (AIs [j].score < AIs [j+1].score)
+                        std::swap (AIs [j], AIs [j+1]);
+
+
+            if (reachedMaxScore)
+                {
+                int nReachedMaxScore = 0;
+                for (int i = 0; i < N_AI; i++)
+                    {
+                    if (AIs [i].score >= maxScore)
+                        nReachedMaxScore++;
+
+                    // If net hasn't reached maxScore it is being copied from net that has reached it (and being mutated also)
+                    if (AIs [i].score < maxScore)
+                        {
+                        AIs [i].net = Network (AIs [i%nReachedMaxScore].net, AIs [i%nReachedMaxScore].net);
+                        AIs [i].net.mutate (5, 0.1);
+                        }
+                    }
+
+                if (nReachedMaxScore == N_AI)
+                    {
+                    AIs [0].net.saveToFile ("topNet");
+                    }
+                }
+            else // all died
+                {
+                for (int i = 0; i < N_AI; i++)
+                    {
+                    // If net hitted the ball at least 1 time, we would mutate it moderately
+                    if (AIs [i].score > 1)
+                        AIs [i].net.mutate (5, 0.1);
+                    // Otherwise net is wery bad and we should try to fix it with hard mutations
+                    else
+                        AIs [i].net.mutate (50, 0.5);
+
+                    }
+                }
+
+            for (int i = 0; i < N_AI; i++)
+                {
+                AIs [i].score = 0;
+                AIs [i].alive = true;
+                }
+            }
+
+        // Graphics
         window.clear ();
-
-        platform.draw (window);
-        platformAI.draw (window);
-        ball.draw (window, &txtr);
-
-        std::ostringstream score_str;
-        score_str << "Score: " << score;
-        score_text.setString (score_str.str ());
-        score_text.setPosition (200, 350);
-        window.draw (score_text);
-        
-        std::ostringstream score_str_AI;
-        score_str_AI << " ScoreAI: " << scoreAI;
-        score_text.setString ("");
-        score_text.setString (score_str_AI.str ());
-        score_text.setPosition (200, 200);
-        window.draw (score_text);
-
-
-        for (int i = 0; i < lives; i++)
+        for (int i = N_AI-1; i >= 0; i--)
             {
-            sf::Sprite heart_sprite;
-            heart_sprite.setPosition (25*i, 725);
-            heart_sprite.setTexture (txtr);
-            heart_sprite.setTextureRect (sf::IntRect (0, 0, 50, 50));
-            heart_sprite.scale (0.5f, 0.5f);
-            window.draw (heart_sprite);
+            if (i == 0)
+                AIs [i].platform.platform.setFillColor (sf::Color::Cyan);
+            else
+                AIs [i].platform.platform.setFillColor (sf::Color::White);
+
+            if (AIs [i].alive)
+                {
+                AIs [i].platform.draw (window);
+                AIs [i].ball.draw (window, &txtr);
+                }
             }
-        for (int i = 0; i < livesAI; i++)
-            {
-            sf::Sprite heart_sprite;
-            heart_sprite.setPosition (25*i, 0);
-            heart_sprite.setTexture (txtr);
-            heart_sprite.setTextureRect (sf::IntRect (0, 0, 50, 50));
-            heart_sprite.scale (0.5f, 0.5f);
-            window.draw (heart_sprite);
-            }
+
 
         window.display ();
         }
-
-
-    while (window.isOpen ())
-        {
-        sf::Event ev;
-
-        while (window.pollEvent (ev))
-            {
-            if (ev.type == sf::Event::Closed)
-                window.close ();
-            }
-
-        window.clear ();
-
-        if (livesAI > lives)
-            {
-            score_text.setString ("AI wins");
-            score_text.setPosition (200, 370);
-            }
-        else
-            {
-            score_text.setString ("You are AI,\n aren't you?");
-            score_text.setPosition (150, 370);
-            }
-        score_text.setCharacterSize (32);
-        window.draw (score_text);
-        window.display ();
-        }
-
-
     return 0;
     }

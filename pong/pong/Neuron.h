@@ -1,17 +1,17 @@
 #pragma once
-#include <vector>
+#include "dynarray.h"
 
 typedef unsigned int uint;
 
 class Neuron
     {
     private:
-        std::vector <Neuron*> inputs;
-        std::vector <double> weights;
+        darray <Neuron*> inputs;
+        darray <double> weights;
         double output;
     public:
         Neuron ();
-        Neuron (std::vector <double> weightsOfInputs);
+        Neuron (darray <double> weightsOfInputs);
         ~Neuron ();
     
         void  setInput (double value);
@@ -24,5 +24,5 @@ class Neuron
 
         void destroyInputs ();
 
-        std::vector <double> getWeights ();
+        darray <double> getWeights ();
     };

@@ -155,6 +155,7 @@
     <ClCompile Include="Neuron.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="dynarray.h" />
     <ClInclude Include="Network.h" />
     <ClInclude Include="Neuron.h" />
   </ItemGroup>

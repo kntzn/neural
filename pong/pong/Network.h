@@ -1,5 +1,5 @@
 #pragma once
-#include <vector>
+#include "dynarray.h"
 #include "Neuron.h"
 
 
@@ -11,7 +11,7 @@ class Network
         uint N_hid = 0;
         uint N_out = 0;
 
-        std::vector <Neuron*> neurons;
+        darray <Neuron*> neurons;
 
     public:
         Network (uint nInputs, uint nHidden, uint nOutputs);
@@ -22,7 +22,7 @@ class Network
         void update ();
 
         double getOuput (uint id);
-        std::vector <Neuron*> getNeurons ();
+        darray <Neuron*> getNeurons ();
         void setInput (uint id, double value);
 
         void mutate (double strength, double rate);

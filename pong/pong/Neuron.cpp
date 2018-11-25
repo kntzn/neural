@@ -10,7 +10,7 @@ double weightRand ()
 
 Neuron::Neuron ()
     { }
-Neuron::Neuron (std::vector<double> weightsOfInputs)
+Neuron::Neuron (darray<double> weightsOfInputs)
     { 
     weights = weightsOfInputs;
     }
@@ -58,7 +58,7 @@ void Neuron::destroyInputs ()
     inputs.clear ();
     }
 
-std::vector<double> Neuron::getWeights ()
+darray <double> Neuron::getWeights ()
     {
     return weights;
     }

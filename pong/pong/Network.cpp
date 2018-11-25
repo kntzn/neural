@@ -74,7 +74,7 @@ Network::Network (char filename [])
     fscanf_s (file, "%d ", &N_hid);
     fscanf_s (file, "%d ", &N_out);
 
-    std::vector <double> weights;
+    darray <double> weights;
 
     for (int i = 0; i < N_inp; i++)
         neurons.push_back (new Neuron);
@@ -130,7 +130,7 @@ double Network::getOuput (uint id)
 
     return NAN;
     }
-std::vector<Neuron*> Network::getNeurons ()
+darray<Neuron*> Network::getNeurons ()
     {
     return neurons;
     }
@@ -173,7 +173,7 @@ void Network::saveToFile (char filename [])
 
     for (int i = 0; i < neurons.size (); i++)
         {
-        std::vector <double> weights = neurons [i]->getWeights ();
+        darray <double> weights = neurons [i]->getWeights ();
 
         for (int j = 0; j < weights.size (); j++)
             fprintf_s (file, "%lg ", weights [j]);
